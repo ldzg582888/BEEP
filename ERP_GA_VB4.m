@@ -67,7 +67,7 @@ EA1sqr = A1.^2;
 EA2 = A2;
 EA2sqr = A2.^2;
 
-Ealpha1 = ones(1,nc); % alpha: parameter in Gamma prior
+Ealpha1 = ones(1,nc); % alpha: parameter in left truncted normal distribution 
 %Ealpha2 = ones(1,nc);
 
 Einvphi1 = inv(phi1); % posterior expectation of the inverse of spontaneous EEG covariance matrix
