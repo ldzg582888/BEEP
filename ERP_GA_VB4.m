@@ -16,12 +16,12 @@ end
 
 nc = chan1;
 errflag = 0;
-nzflag = ones(1,nc);
+nzflag = ones(1,nc); % a flag to label whether the amplitude factor is zero
 %%%% initialize %%%%%
 
 
 %%%% phi1&phi2
-phi1 = zeros(chan1);
+phi1 = zeros(chan1); % spontaneous EEG covariance matrix in condition 1
 
 X1_mean = mean(X1,3);
 for it = 1:trial1
@@ -31,7 +31,7 @@ for it = 1:trial1
 end
 phi1 = phi1/(trial1*len1);
 
-phi2 = zeros(chan2);
+phi2 = zeros(chan2); % spontaneous EEG covariance matrix in condition 2
 X2_mean = mean(X2,3);
 for it = 1:trial2
     temp = X2(:,:,it)-X2_mean;
@@ -42,35 +42,35 @@ phi2 = phi2/(trial2*len2);
 
 %%%% Z1&Z2
 [U,S,V] = svd(X1_mean,'econ');
-Z1 = V(:,1:nc)';
+Z1 = V(:,1:nc)'; % ERP time course
 Z2 = Z1;
 
 %%%% A
-A1 = eye(nc);
+A1 = eye(nc); % amplitude factors
 A2 = eye(nc);
 
 %%%% tao
-Tao = zeros(1,nc);
-search_inv = 30;
+Tao = zeros(1,nc); % latency shift
+search_inv = 30; % latency shift interval
 
 
-EC = U;
+EC = U; % EC: posterior expectation of spatial filter
 % ECcov = zeros(chan1,chan1,nc);
 
-EZ1 = Z1;
+EZ1 = Z1; % EZ: posterior expectation of ERP time course 
 EZ1sqr = Z1.^2;
 EZ2 = Z2;
 EZ2sqr = Z2.^2;
 
-EA1 = A1;
+EA1 = A1;  % EA: posterior expectation of amplitude factors 
 EA1sqr = A1.^2;
 EA2 = A2;
 EA2sqr = A2.^2;
 
-Ealpha1 = ones(1,nc);
+Ealpha1 = ones(1,nc); % alpha: parameter in Gamma prior
 %Ealpha2 = ones(1,nc);
 
-Einvphi1 = inv(phi1);
+Einvphi1 = inv(phi1); % posterior expectation of the inverse of spontaneous EEG covariance matrix
 Einvphi2 = inv(phi2);
 lowerbound0 =0;
 dZ = 1;
@@ -84,14 +84,16 @@ while (((i<650)||(dZ>deltaL)) && (i<1500))%%%% iteration at least 650 times, at 
 %%%% update C
 
     [EC,ECcov,ECsqr] = updateC(X1_mean,X2_mean, EC, EZ1, EZ2, EA1, EA2, Einvphi1, Einvphi2, EZ1sqr, EZ2sqr, EA1sqr, EA2sqr,nc,trial1,nzflag);
+    % ECcov: posterior expectation of cov(C)
+    % ECsqr: posterior expectation of C*C^T
      pEZ1 = EZ1;pEZ2 = EZ2;   
      [EZ1,EZ1sqr,EZ2,EZ2sqr] = updateZ(X1_mean,X2_mean,EA1,EA2,EA1sqr,EA2sqr,EC,ECcov,Tao,EZ1,EZ2,Einvphi1,Einvphi2,nc,trial1,nzflag);
      dZ = (norm(EZ1-pEZ1,'fro')/norm(pEZ1,'fro'))^2+(norm(EZ2-pEZ2,'fro')/norm(pEZ2,'fro'))^2;
-
+     % update rate of ERP time course 
      Tao = updateTao(X2_mean,EC,EA2,EZ2,EZ1,nc,Einvphi2,nzflag);
      
     [EA1,EA1sqr,SigmaA1,MuA1,nzflag1] = updateA(X1_mean,EC, ECcov,EA1, Einvphi1, EZ1, EZ1sqr, Ealpha1,nc,trial1,nzflag);
-
+     
     [EA2,EA2sqr,SigmaA2,MuA2,nzflag2] = updateA(X2_mean,EC, ECcov,EA2, Einvphi2, EZ2, EZ2sqr, Ealpha1,nc,trial1,nzflag);
     nzflag = nzflag1& nzflag2;
     
@@ -105,6 +107,7 @@ while (((i<650)||(dZ>deltaL)) && (i<1500))%%%% iteration at least 650 times, at 
     
 
       lower_bound = lb(X1,X2,EC, ECsqr, ECcov, EA1, EA2, EA1sqr, EA2sqr, EZ1, EZ2, EZ1sqr, EZ2sqr, Ealpha1, Einvphi1, Einvphi2, nc, SigmaA1,MuA1,SigmaA2,MuA2,nzflag);
+      % VB lower bound
        dl = (lower_bound - lowerbound0)/(abs(lowerbound0)+10^-30);
        if ((dl <0)&&(i>1))
          errflag =1;
